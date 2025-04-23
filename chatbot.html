@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sentiment Analysis Chatbot</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .bg {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      transition: opacity 1s ease-in-out;
+      z-index: -2;
+    }
+
+    .bg.fade-out {
+      opacity: 0;
+    }
+
+    .overlay {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: -1;
+    }
+
+    .chatbox {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(15px);
+      border-radius: 25px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      padding: 40px;
+      max-width: 750px;
+      width: 90%;
+      color: #fff;
+      transition: all 0.3s ease;
+      animation: slideUp 0.8s ease-out;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(50px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .question p {
+      font-size: 1.5em;
+      font-weight: 600;
+      margin-bottom: 25px;
+    }
+
+    .options button {
+      display: block;
+      width: 100%;
+      margin: 12px 0;
+      padding: 15px;
+      font-size: 17px;
+      font-weight: 500;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(to right, #00c6ff, #0072ff);
+      color: white;
+      cursor: pointer;
+      transition: transform 0.3s ease, background 0.3s ease;
+    }
+
+    .options button:hover {
+      background: linear-gradient(to right, #ff416c, #ff4b2b);
+      transform: scale(1.03);
+    }
+
+    #downloadBtn {
+      display: none;
+      margin-top: 30px;
+      width: 100%;
+      padding: 15px;
+      font-size: 17px;
+      font-weight: bold;
+      background: linear-gradient(to right, #00b09b, #96c93d);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    #downloadBtn:hover {
+      background: linear-gradient(to right, #f7971e, #ffd200);
+      transform: scale(1.05);
+    }
+
+    h3 {
+      font-size: 1.6em;
+      color: #fff;
+      margin-bottom: 15px;
+    }
+
+    p {
+      font-size: 1.1em;
+      color: #eee;
+      line-height: 1.7;
+    }
+
+    .chat-container {
+      z-index: 1;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg" id="bg1"></div>
+  <div class="bg" id="bg2" style="opacity: 0;"></div>
+  <div class="overlay"></div>
+
+  <div class="chat-container">
+    <div class="chatbox">
+      <div id="chat"></div>
+      <button id="downloadBtn">Download CSV Report</button>
+    </div>
+  </div>
+
+  <script>
+    const questions = [
+      { q: "What is your age?", options: ["18-25", "26-35", "36-45", "46+"] },
+      { q: "What is your gender?", options: ["Male", "Female", "Other"] },
+      { q: "How often do you use social media?", options: ["Daily", "Weekly", "Monthly", "Rarely"] },
+      { q: "How many hours per day do you spend on social media?", options: ["0-6", "6-12", "12-18", "18-24"] },
+      { q: "How often do you post your thoughts or feelings online?", options: ["Yes", "No", "Sometimes"] },
+      { q: "Have you ever felt negative emotions after viewing content online?", options: ["Always", "Sometimes", "Rarely", "Never"] },
+      { q: "How do you typically respond when you feel emotionally triggered by content?", options: ["Comment", "Share", "Ignore"] },
+      { q: "Do you feel supported by your online community when expressing emotions?", options: ["Often", "Sometimes", "Rarely", "Never"] },
+      { q: "How often do you engage in discussions about mental health online?", options: ["Often", "Sometimes", "Rarely", "Never"] },
+      { q: "How has online content impacted your mental health in the past year?", options: ["Positively", "Negatively", "No impact"] },
+      { q: "Do you feel more or less anxious after spending time on social media?", options: ["More", "Less", "No change"] },
+      { q: "Have you experienced online harassment related to emotional expressions?", options: ["Yes", "No"] },
+      { q: "How do you manage emotional reactions to negative content online?", options: ["Unfollow", "Block", "Report", "Ignore"] },
+      { q: "Have you taken a break from social media for mental health?", options: ["Yes", "No"] },
+      { q: "How often do you notice tone shifts in online conversations?", options: ["Often", "Sometimes", "Rarely", "Never"] },
+      { q: "Have you reached out to someone online for emotional support?", options: ["Yes", "No"] },
+      { q: "How often do you offer emotional support online?", options: ["Often", "Sometimes", "Rarely", "Never"] },
+      { q: "How do you feel after providing emotional support?", options: ["Satisfied", "Drained", "Indifferent"] },
+      { q: "Do social media platforms influence how you process emotions?", options: ["Yes", "No"] },
+      { q: "Do you think AI sentiment analysis can assess online emotions?", options: ["Yes", "No"] },
+      { q: "Should sentiment analysis be used to moderate emotional content?", options: ["Yes", "No"] },
+      { q: "How do you feel about your emotional data being used in sentiment analysis?", options: ["Comfortable", "Uncomfortable", "Neutral"] },
+      { q: "Do you support sentiment analysis in mental health applications?", options: ["Supportive", "Against", "Unsure"] },
+      { q: "Would you like personalized content based on emotional state?", options: ["Yes", "No"] }
+    ];
+  
+    const backgroundImages = [
+      'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4',
+      'https://images.unsplash.com/photo-1587614382346-ac48c28fe6c1',
+      'https://images.unsplash.com/photo-1614850523455-11f399bda5e9',
+      'https://images.unsplash.com/photo-1587829741301-dc798b83add3',
+      'https://images.unsplash.com/photo-1494173853739-c21f58b16055',
+      'https://images.unsplash.com/photo-1573164574392-98fceae9f27b',
+      'https://images.unsplash.com/photo-1531497865144-0464ef8fb9a8'
+    ];
+  
+    let currentQuestion = 0;
+    let currentBg = 0;
+    const responses = [];
+    const chat = document.getElementById('chat');
+    const bg1 = document.getElementById('bg1');
+    const bg2 = document.getElementById('bg2');
+    let showingBg1 = true;
+  
+    function updateBackground() {
+      const nextBg = `${backgroundImages[currentBg % backgroundImages.length]}?w=1600&auto=format`;
+      if (showingBg1) {
+        bg2.style.backgroundImage = `url('${nextBg}')`;
+        bg2.classList.remove('fade-out');
+        bg1.classList.add('fade-out');
+      } else {
+        bg1.style.backgroundImage = `url('${nextBg}')`;
+        bg1.classList.remove('fade-out');
+        bg2.classList.add('fade-out');
+      }
+      showingBg1 = !showingBg1;
+      currentBg++;
+    }
+  
+    function showQuestion() {
+      if (currentQuestion >= questions.length) {
+        analyzeSentiment();
+        showAnalysis();
+        document.getElementById('downloadBtn').style.display = 'block';
+        return;
+      }
+  
+      updateBackground();
+      const q = questions[currentQuestion];
+      chat.innerHTML = `
+        <div class="question">
+          <p>${q.q}</p>
+          <div class="options">
+            ${q.options.map(opt => `<button onclick="saveResponse('${opt}')">${opt}</button>`).join('')}
+          </div>
+        </div>`;
+    }
+  
+    function saveResponse(answer) {
+      responses.push({ question: questions[currentQuestion].q, answer });
+      localStorage.setItem('sentimentSurvey', JSON.stringify(responses));
+      currentQuestion++;
+      showQuestion();
+    }
+  
+    function analyzeSentiment() {
+      const keywords = {
+        positive: ["Positively", "Supportive", "Satisfied", "Comfortable", "Less"],
+        negative: ["Negatively", "Drained", "Uncomfortable", "More"]
+      };
+      let score = 0;
+  
+      responses.forEach(r => {
+        if (keywords.positive.includes(r.answer)) score++;
+        if (keywords.negative.includes(r.answer)) score--;
+      });
+  
+      let sentiment = 'Neutral';
+      if (score > 2) sentiment = 'Positive';
+      else if (score < -2) sentiment = 'Negative';
+  
+      chat.innerHTML = `<h3>Thank you! Based on your responses:</h3>
+                        <p><strong>Overall Sentiment:</strong> ${sentiment}</p>`;
+    }
+  
+    function showAnalysis() {
+      const usage = responses.find(r => r.question.includes("How often do you use social media"))?.answer || "";
+      const hours = responses.find(r => r.question.includes("hours per day"))?.answer || "";
+      let level = "";
+  
+      if (usage === "Daily" && hours === "18-24") level = "Extreme addiction";
+      else if (usage === "Daily" && ["6-12", "12-18"].includes(hours)) level = "High addiction";
+      else if (usage === "Weekly" && hours === "6-12") level = "Moderate addiction";
+      else level = "Minimal addiction";
+  
+      chat.innerHTML += `<p><strong>Social Media Addiction Level:</strong> ${level}</p>`;
+    }
+  
+    function downloadCSV() {
+      const csv = responses.map(r => `"${r.question}","${r.answer}"`).join("\n");
+      const blob = new Blob(["Question,Answer\n" + csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'sentiment_analysis_responses.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  
+    document.getElementById('downloadBtn').addEventListener('click', downloadCSV);
+  
+    showQuestion();
+  </script>
+  
+</body>
+</html>
